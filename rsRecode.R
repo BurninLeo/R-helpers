@@ -23,7 +23,7 @@ recode = function(x, codes, copyOther=F) {
         hads = hads[!is.na(hads)]
         miss = hads[!(hads %in% keys)]
         if (length(miss) > 0) {
-            warning(paste("Values in x will be recoded to NA:", miss, sep="\n  - "))
+            warning(paste(c("Values in x will be recoded to NA:", miss), collapse="\n  - "))
         }
     }
     

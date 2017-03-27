@@ -16,9 +16,9 @@ writeForeignMySPSS = function (df, datafile, codefile, varnames = NULL, len = 32
             info = strsplit(sub('0+$', '', as.character(y)), ".", fixed=TRUE)
             info = info[sapply(info, FUN=length) == 2]
             if (length(info) >= 2) {
-                dec = nchar(unlist(info))[seq(2, length(info), 2)]
+              dec = nchar(unlist(info))[seq(2, length(info), 2)]
             } else {
-                return(0)
+              return(0)
             }
             return(max(dec, na.rm=T))
         } else {
@@ -39,10 +39,10 @@ writeForeignMySPSS = function (df, datafile, codefile, varnames = NULL, len = 32
     varlabels <- names(df)
     # Use comments where applicable
     for (i in 1:length(df)) {
-        cm = comment(df[[i]])
-        if (is.character(cm) && (length(cm) > 0)) {
-            varlabels[i] = comment(df[[i]])
-        }
+      cm = comment(df[[i]])
+      if (is.character(cm) && (length(cm) > 0)) {
+        varlabels[i] = comment(df[[i]])
+      }
     }
     
     if (is.null(varnames)) {
@@ -73,19 +73,38 @@ writeForeignMySPSS = function (df, datafile, codefile, varnames = NULL, len = 32
         dl.varnames[chv] <- paste(dl.varnames[chv], lengths)
     }
     
+    # Dates
+    is.POSIXct = function(x) {
+      inherits(x, "POSIXct")
+    }
+    chd = sapply(df, is.POSIXct)
+    if (any(chd)) {
+      for (v in which(chd)) {
+        dfn[[v]] = format(dfn[[v]], format="%d-%m-%Y %H:%M:%S")
+      }
+      lengths = rep("DATE", length(df[chd]))
+      dl.varnames[chd] = paste(dl.varnames[chd], " (DATETIME)", sep="")
+    }
+    
     # decimals and bools
     nmv = sapply(df, is.numeric)
     dbv = sapply(df, is.numeric)
+    factors <- sapply(df, is.factor)
     nv = (nmv | dbv)
-    decimals = sapply(df[nv], FUN=decimalplaces)
-    dl.varnames[nv] = paste(dl.varnames[nv], " (F", decimals+8, ".", decimals, ")", sep="")
-    if (length(bv) > 0) {
-        dl.varnames[bv] = paste(dl.varnames[bv], "(F1.0)")
+    if (any(nv)) {
+      decimals = sapply(df[nv], FUN=decimalplaces)
+      # if (length(decimals) == 0) {
+      dl.varnames[nv] = paste(dl.varnames[nv], " (F", decimals+8, ".", decimals, ")", sep="")
+      if (length(bv) > 0) {
+          dl.varnames[bv] = paste(dl.varnames[bv], "(F1.0)")
+      }
     }
-    rmv = !(chv | nv | bv)
+    
+    rmv = !(chv | nv | bv | chd)
     if (length(rmv) > 0) {
-        dl.varnames[rmv] = paste(dl.varnames[rmv], "(F8.0)")
+      dl.varnames[rmv] = paste(dl.varnames[rmv], "(F8.0)")
     }
+    
     # Breaks in output
     brv = seq(1, length(dl.varnames), 10)
     dl.varnames[brv] = paste(dl.varnames[brv], "\n", sep=" ")
@@ -96,7 +115,7 @@ writeForeignMySPSS = function (df, datafile, codefile, varnames = NULL, len = 32
     cat("VARIABLE LABELS\n", file = codefile, append = TRUE)
     cat(paste(varnames, adQuote(varlabels), "\n"), ".\n", file = codefile,
         append = TRUE)
-    factors <- sapply(df, is.factor)
+    
     if (any(factors)) {
         cat("\nVALUE LABELS\n", file = codefile, append = TRUE)
         for (v in which(factors)) {
